@@ -91,4 +91,4 @@ This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) fil
 
 ## Contact
 
-If you have any questions or suggestions, please feel free to open an issue or reach out to the project maintainer at [youremail@example.com](mailto:youremail@example.com).
+If you have any questions or suggestions, please feel free to open an issue or reach out to the project maintainer at [muti.kara@ug.bilkent.edu.tr](mailto:muti.kara@ug.bilkent.edu.tr).
