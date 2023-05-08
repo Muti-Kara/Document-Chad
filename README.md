@@ -62,7 +62,7 @@ python app.py
 
 1. After launching the application, open your web browser and navigate to `http://127.0.0.1:7860/`. You should see the Gradio interface.
 
-2. Upload the document you want to analyze by clicking the "Upload" button and selecting the file from your computer. The system currently supports .txt, .pdf, and .docx formats.
+2. Upload the document you want to analyze by clicking the "Upload" button and selecting the file from your computer. The system currently supports only .pdf format.
 
 3. Enter your question in the provided text box.
 
