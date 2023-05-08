@@ -81,7 +81,7 @@ Please note that this project is still under development, and contributions are 
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for more information.
 
 ## Acknowledgements
 
