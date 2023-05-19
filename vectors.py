@@ -10,15 +10,39 @@ pinecone.init(
 )
 
 
-def get_index(index_name: str, dims: int) -> pinecone.Index:
-    if index_name not in pinecone.list_indexes():
-        pinecone.create_index(index_name, dimension=dims)
+class VectorManager:
+    def __init__(self, index_name: str, namespace: str, dims: int):
+        self.pinecone_index = pinecone.Index(index_name)
+        if self.pinecone_index.describe_index_stats()["dimension"] != dims:
+            raise Exception("Index dimension is incompatible with embedding dimension")
+        self.namespace = namespace
+        self.dims = dims
+        self.hash2string = dict()
+        self.clr()
 
-    index = pinecone.Index(index_name)
+    def put(self, chunks: list[str], embeddings: list[list[float]]) -> bool:
+        if len(chunks) != len(embeddings):
+            raise Exception("invalid chunk and embedding list")
+        if len(embeddings) > 0 and len(embeddings[0]) != self.dims:
+            raise Exception("invalid embedding dimension")
+        hashed_chunks = list(map(str, map(hash, chunks)))
+        self.hash2string = dict(zip(hashed_chunks, chunks))
+        return self.pinecone_index.upsert(
+            vectors=list(zip(hashed_chunks, embeddings)),
+            namespace=self.namespace
+        )["upserted_count"] == len(chunks)
 
-    if index.describe_index_stats()["dimension"] != dims:
-        pinecone.delete_index(index_name)
-        pinecone.create_index(index_name, dimension=dims)
-        index = pinecone.Index(index_name)
+    def get(self, embedding: list[float], top_k: int) -> list[str]:
+        def match2string(hashed_result: dict) -> str:
+            return self.hash2string.get(hashed_result["id"], None)
+        return list(map(
+            match2string,
+            self.pinecone_index.query(
+                vector=embedding,
+                top_k=top_k,
+                namespace=self.namespace
+            )["matches"]
+        ))
 
-    return index
+    def clr(self):
+        self.pinecone_index.delete(deleteAll=True, namespace=self.namespace)

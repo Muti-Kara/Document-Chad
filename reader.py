@@ -1,5 +1,5 @@
 from nltk.tokenize import sent_tokenize
-from pypdf import PdfReader
+from PyPDF2 import PdfReader
 import tiktoken
 
 
@@ -9,7 +9,6 @@ class Reader:
         text = ""
         for page in reader.pages:
             text += page.extract_text() + " "
-
         self.sentences = sent_tokenize(text)
 
     def __str__(self) -> str:
@@ -37,3 +36,6 @@ class Reader:
                 cur_token_cnt = encoded_sent_lens[index]
 
         return ["\n".join(chunk) for chunk in text_chunks]
+
+    def batch_chunks(self, chunks: list[str], batch_len: int):
+        return [chunks[i:i + batch_len] for i in range(0, len(chunks), batch_len)]
