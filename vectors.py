@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import pinecone
+import backoff
 import os
 
 load_dotenv()
@@ -20,6 +21,7 @@ class VectorManager:
         self.hash2string = dict()
         self.clr()
 
+    @backoff.on_exception(backoff.expo, Exception, max_tries=10)
     def put(self, chunks: list[str], embeddings: list[list[float]]) -> bool:
         if len(chunks) != len(embeddings):
             raise Exception("invalid chunk and embedding list")

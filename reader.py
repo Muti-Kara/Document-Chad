@@ -1,41 +1,37 @@
 from nltk.tokenize import sent_tokenize
 from PyPDF2 import PdfReader
-import tiktoken
 
 
 class Reader:
-    def __init__(self, file_name):
-        reader = PdfReader(file_name)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + " "
-        self.sentences = sent_tokenize(text)
+    def __init__(self, encoder, max_chunk_size: int, batch_len: int):
+        self.max_chunk_size = max_chunk_size
+        self.batch_len = batch_len
+        self.encoder = encoder
 
-    def __str__(self) -> str:
-        return f"File: {len(self.sentences)} sentences in the document."
+    def read_file(self, file_name: str) -> list[str]:
+        return [page.extract_text() for page in PdfReader(file_name).pages]
 
-    def split_chunks(self, model_name: str, max_chunk_size: int) -> list[str]:
-        encoding = tiktoken.encoding_for_model(model_name=model_name)
-        encoded_sent_lens = [
-            len(encoding.encode(sent)) for sent in self.sentences
-        ]
+    def separate_sentences(self, text: str) -> list[str]:
+        return sent_tokenize(text)
 
-        if len(encoded_sent_lens) == 0:
-            raise Exception("Empty File!!!")
+    def split_chunks(self, sentences: list[str]) -> list[str]:
+        sent_lens = [len(self.encoder.encode(sent)) for sent in sentences]
+        cur_token_cnt = 0
+        chunk = []
+        chunks = []
 
-        text_chunks = []
-        cur_token_cnt = encoded_sent_lens[0]
-        chunk = [self.sentences[0]]
-        for index in range(1, len(encoded_sent_lens)):
-            if cur_token_cnt + encoded_sent_lens[index] < max_chunk_size:
-                chunk.append(self.sentences[index])
-                cur_token_cnt += encoded_sent_lens[index]
+        for index, sent in enumerate(sentences):
+            sent_len = sent_lens[index]
+            if cur_token_cnt + sent_len <= self.max_chunk_size:
+                chunk.append(sent)
+                cur_token_cnt += sent_len
             else:
-                text_chunks.append(chunk)
-                chunk = [self.sentences[index]]
-                cur_token_cnt = encoded_sent_lens[index]
+                chunks.append(chunk)
+                chunk = [sent]
+                cur_token_cnt = sent_len
+        if chunk:
+            chunks.append(chunk)
+        return [" ".join(chunk) for chunk in chunks]
 
-        return ["\n".join(chunk) for chunk in text_chunks]
-
-    def batch_chunks(self, chunks: list[str], batch_len: int):
-        return [chunks[i:i + batch_len] for i in range(0, len(chunks), batch_len)]
+    def batch_chunks(self, chunks: list[str]) -> list[list[str]]:
+        return [chunks[i:i + self.batch_len] for i in range(0, len(chunks), self.batch_len)]

@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import backoff
 import openai
 import os
 
@@ -11,6 +12,7 @@ class Embedder:
     def __init__(self, model: str):
         self.model = model
 
+    # @backoff.on_exception(backoff.expo, Exception, max_tries=10)
     def get_embedding(self, text: str):
         text = text.replace("\n", " ")
         return openai.Embedding.create(
@@ -30,16 +32,17 @@ class ChatBot:
             {
                 "role": "user",
                 "content": QUESTION_FORMAT.format(
-                    info_1=srcs[0] if len(srcs) > 0 else "",
-                    info_2=srcs[1] if len(srcs) > 1 else "",
-                    info_3=srcs[2] if len(srcs) > 2 else "",
-                    info_4=srcs[3] if len(srcs) > 3 else "",
+                    info_1=srcs[0],
+                    info_2=srcs[1],
+                    info_3=srcs[2],
+                    info_4=srcs[3],
                     question=question
                 )
             }
         )
 
-    def get_response(self, srcs: list[str]):
+    # @backoff.on_exception(backoff.expo, Exception, max_tries=10)
+    def get_response(self):
         try:
             response = openai.ChatCompletion.create(
                 model=self.model,
@@ -54,30 +57,31 @@ class ChatBot:
             question = self.messages[-1]
             self.clear_all()
             self.messages.append(question)
-            return self.get_response(srcs)
+            return self.get_response()
 
         self.messages.append(response["choices"][0]["message"])
-        return RESPONSE_FORMAT.format(
-            answer=self.messages[-1]["content"],
-            src1=srcs[0] if len(srcs) > 0 else "",
-            src2=srcs[1] if len(srcs) > 1 else "",
-            src3=srcs[2] if len(srcs) > 2 else "",
-            src4=srcs[3] if len(srcs) > 3 else "",
-        )
+        return RESPONSE_FORMAT.format(answer=self.messages[-1]["content"])
 
     def clear_all(self):
         self.messages = [
             {
                 "role": "system",
-                "content": SYSTEM_PROMPT
+                "content": CHAT_PROMPT
             }
         ]
 
 
-SYSTEM_PROMPT = """
-You are an AI assistant that will answer user's questions by looking at
-the information user will give.\nUser will give the information you will
-use in 4 blocks with and the question he/she asked.\n
+PREPROCESS_PROMPT = """
+You are a text processor. When user gives a text you should only response with the corrected version. The text you will receive will not contain any white-space at all, so you need to insert them. Also It may have some markup symbols and you should exclude those. If you find spelling errors fix them too.\n
+
+Input Format:
+{raw text}
+
+Output Format:
+{corrected text}
+"""
+CHAT_PROMPT = """
+You are an AI assistant that will answer user's questions by looking at the information user will give. User will give the information you will use in 4 blocks with and the question he/she asked.\n
 
 Input Format:
 ///\n
@@ -114,9 +118,5 @@ QUESTION_FORMAT = """
 ***\n
 """
 RESPONSE_FORMAT = """
-ChatBots Answer: {answer}\n
-Source 1: {src1}\n
-Source 2: {src2}\n
-Source 3: {src3}\n
-Source 4: {src4}\n
+{answer}
 """
